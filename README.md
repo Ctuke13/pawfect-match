@@ -52,3 +52,5 @@ Tailwind CSS
 
 Radix UI
 ShadCN
+Framer Motion
+Leaflet 
