@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../context/AuthContext";
 import { FavoritesProvider } from "../context/FavoritesContext";
+import Navbar from "@/components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,9 +17,12 @@ const geistMono = Geist_Mono({
   display: "swap"
 });
 
+export const viewport = 'width=device-width, initial-scale=1.0';
+
 export const metadata: Metadata = {
   title: "Pawfect Match",
   description: "Find your perfect dog companion!",
+  metadataBase: new URL("https://localhost:3000"),
   icons: {
     icon: "/favicon.png",
     apple: "/pawfect-apple-icon.png",
@@ -47,7 +51,6 @@ export const metadata: Metadata = {
     description: "Find your perfect dog companion!",
     images: ["/og-image.png"],
   },
-  viewport: "width=device-width, initial-scale=1.0",
 };
 
 export default function RootLayout({
@@ -56,12 +59,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        
       >
         <AuthProvider>
           <FavoritesProvider>
+            <Navbar />
             {children}
           </FavoritesProvider>
         </AuthProvider>

@@ -1,18 +1,33 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
+  darkMode: ["class", "dark-mode"],
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",  
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",  
+    "./context/**/*.{js,ts,jsx,tsx,mdx}",  
+    "./services/**/*.{js,ts,jsx,tsx,mdx}", 
+    "./utils/**/*.{js,ts,jsx,tsx,mdx}", 
+    "./app/globals.css", 
   ],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "#D9D9D9", 
+        foreground: "#000000", 
+        border: "#000000", 
+
+        primary: "#FFC936",
+        secondary: "#D9D9D9",
+        muted: "#F5F5F5",
+        accent: "#FFC936",
+        destructive: "#FF4D4D",
+        input: "#FFFFFF",
+        ring: "#FFC936",
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
+export default config;
