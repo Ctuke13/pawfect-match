@@ -25,6 +25,9 @@ const config: Config = {
         input: "#FFFFFF",
         ring: "#FFC936",
       },
+      fontFamily: {
+        lilita: ['"Lilita One"', "cursive"],
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -10,7 +10,7 @@ const kiwiMaru = Kiwi_Maru({
 
 export default function Hero() {
     return (
-        <div className="relative w-full  max-w-[1440px] max-h-[375px] mx-auto overflow-hidden">
+        <div className="relative w-full  max-w-[1440px] max-h-[375px] mx-auto overflow-hidden bg-red">
             <img src="https://i.imgur.com/a2C6atG.png" alt="Background Image"
             className="w-full h-full object-cover"
             style={{ objectPosition: "center 30%" }}
@@ -21,7 +21,7 @@ export default function Hero() {
 
             {/* Text & Search Bar */}
             <div className="absolute flex flex-col items-center justify-center w-full inset-0 object-cover text-center"> 
-                <h1 className={`${kiwiMaru.className} text-6xl font-bold leading-snug font-light font-bold mb-6 text-center text-white mt-6`}>
+                <h1 className={`${kiwiMaru.className} text-6xl font-bold leading-snug font-light font-bold mb-6 text-center text-white mt-6 drop-shadow-2xl`}>
                     Find Furever Homes,
                     <br />One Paw at a Time.
                 </h1>

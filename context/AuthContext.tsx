@@ -2,21 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { loginUser, logoutUser } from "@/services/auth";
-
-interface User {
-    name: string;
-    email: string;
-    zipcode?: string;
-    favorites?: string[]
-}
-
-interface AuthContextType {
-    user: User | null;
-    login: (name: string, email: string, zipcode?: string) => Promise<void>;
-    logout: () => Promise<void>;
-    updateFavorites: (favorites: string[]) => Promise<void>;
-    updateZipcode: (zipcode: string) => void;
-}
+import { User, AuthContextType} from "../types/auth"
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

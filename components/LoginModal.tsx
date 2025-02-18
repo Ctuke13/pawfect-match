@@ -1,22 +1,56 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
-export default function LoginModal({ onClose }: { onClose: () => void }) {
+interface LoginModalProps {
+  closeModal: () => void;
+}
+
+const LoginModal: React.FC<LoginModalProps> = ({ closeModal }) => {
   const { login } = useAuth();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [zipcode, setZipcode] = useState("");
+  const [ error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
 
   const handleLogin = async () => {
-    if (!name || !email) return alert("Please enter your name and email.");
-    await login(name, email, zipcode || undefined);
-    onClose(); // Close the modal after login
+    if (!name || !email) {
+      setError("Name and Email are required.");
+      toast({
+        title: "❌ Login Failed",
+        description: error,
+        className: "bg-[#b91c1c] text-white border-4 border-black-700 shadow-lg shadow-red-500/50", 
+      });
+      return;
+    }
+    try {
+      await login(name, email, zipcode);
+      
+      toast({
+        title: "✅ Login Successful",
+        description: `Welcome, ${name}!`,
+        className: "bg-[#FFC936] text-black font-semibold border-4 border-black shadow-lg shadow-yellow-500/50", 
+      });
+
+      closeModal();
+    } catch (err){
+      setError("Login failed. Please try again.")
+      toast({
+        title: "❌ Login Failed",
+        description: error,
+        className: "bg-[#b91c1c] text-white border-4 border-red-700 shadow-lg shadow-red-500/50",
+      });
+    } finally {
+      setIsLoading(false)
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-10 flex justify-center items-center">
+    <div className="fixed inset-0 bg-black bg-opacity-10 flex justify-center items-center z-1">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96">
         <h2 className="text-2xl font-bold text-center">Sign In</h2>
 
@@ -52,10 +86,12 @@ export default function LoginModal({ onClose }: { onClose: () => void }) {
         </button>
 
         {/* Close Modal */}
-        <button className="mt-4 w-full text-black hover:text-red-500  hover:underline" onClick={onClose}>
+        <button className="mt-4 w-full text-black hover:text-red-500  hover:underline" onClick={closeModal}>
           Cancel
         </button>
       </div>
     </div>
   );
 }
+
+export default LoginModal
