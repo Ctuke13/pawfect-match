@@ -17,10 +17,20 @@ export const getBreeds = async (): Promise<string[]> => {
 };
 
 // Search with filters
-export const searchDogs = async (filters: any) => {
-    const response = await apiClient.get("/dogs/search", { params: filters });
+export const searchDogs = async (filters: any = {}, from: number = 0, page: number = 1, limit: number = 6) => {
+    const response = await apiClient.get("/dogs/search", { params: { ...filters, from, limit, size: limit } });
     return response.data;
 }
+
+// Search by breed
+export const searchDogsByBreed = async (breed: string, page: number = 1, limit: number = 6) => {
+    return await searchDogs({ breed }, page, limit)
+}
+
+// Search by zip code
+export const searchDogsByZipCode = async (zipCode: string, page: number = 1, limit: number = 6) => {
+    return await searchDogs({ zipCode }, page, limit);
+};
 
 // Fetch dogs by ID
 export const getDogsById = async (dogIds: string[]) => {
