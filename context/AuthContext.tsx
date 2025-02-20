@@ -40,7 +40,7 @@ export const AuthProvider : React.FC<{ children: ReactNode }> = ({ children }) =
         if(user) {
             const updatedUser = { ...user, favorites};
             setUser(updatedUser);
-            localStorage.setItem("user", JSON.stringify(updateFavorites));
+            localStorage.setItem("user", JSON.stringify(updatedUser));
         }
     }
 

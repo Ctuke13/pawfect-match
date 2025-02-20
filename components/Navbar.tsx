@@ -15,8 +15,9 @@ import {
 import { useWindowWidth } from "@/utils/useWindowWidth";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false);
 
   const width = useWindowWidth();
@@ -27,9 +28,21 @@ export default function Navbar() {
 
   const desktopLogoSrc = width >= 900 && width <= 1000 ? "/pawfect_icon_nobg.png" : "/pawfectmatch_logo.png";
 
+  const handleProtectedClick = (message: string) => {
+    if(!user) {
+      setModalMessage(message);
+      setIsModalOpen(true)
+    }
+  }
+
+  const closeModalWithReset = () => {
+    setModalMessage(null);
+    setIsModalOpen(false);
+  };
+
   return (
-    <nav className="flex items-center justify-between py-4 px-8 bg-[#D9D9D9] shadow-md mt-5">
-      <div className="flex min-[900px]:hidden items-center justify-center gap-4 w-full">
+    <nav className="flex flex-wrap items-center justify-between py-4 px-8 bg-[#D9D9D9] shadow-md w-screen mt-5">
+      <div className="flex lg-hidden min-[900px]:hidden items-center justify-between gap-4 ">
         {/* Hamburger */}
         <DropdownMenu>
           <DropdownMenuTrigger className="p-2 text-black hover:text-gray-700">
@@ -54,12 +67,23 @@ export default function Navbar() {
             className="bg-[#D9D9D9] font-bold min-[900px]:hidden"
           >
             <DropdownMenuItem asChild>
-              <Link href="/search">Find Your Match</Link>
+              {user ? (
+                <Link href="/search">Find Your Match</Link>
+              ) : (
+                <button onClick={() => handleProtectedClick("Sign in to find your match")}>
+                  Find Your Match
+                </button>
+              )}
+              
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/favorites">
-                My Paw List <span className="text-red-500">♥</span>
-              </Link>
+              {user ? (
+                <Link href="/search">My Paw List <span className="hover:text-red-500">♥</span></Link>
+              ) : (
+                <button onClick={() => handleProtectedClick("Sign in to view your Paw List")}>
+                  My Paw List <span className="hover:text-red-500">♥</span>
+                </button>
+              )}
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/about">About Us</Link>
@@ -111,19 +135,32 @@ export default function Navbar() {
 
         {/* Nav links in center */}
         <div className="space-x-12 m-1">
-          <Link
-            href="/search"
-            className="text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
+          {user ? (
+            <Link href="/search" className="text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
           >
-            Find Your Match
-          </Link>
-          <Link
-            href="/favorites"
-            className="group text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
+              Find Your Match
+            </Link>
+          ) : (
+            <button onClick={() => handleProtectedClick("Sign in to find your match!")} className="text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
+          >
+              Find Your Match
+            </button>
+          )}
+          
+          {user ? (
+            <Link href="/favorites" className="group text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
           >
             My Paw List
             <span className="text-2xl text-black group-hover:text-red-500"> ♥</span>
           </Link>
+          ): (
+            <button onClick={() => handleProtectedClick("Sign in to view your Paw List!")} className="group text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
+          >
+            My Paw List
+            <span className="text-2xl text-black group-hover:text-red-500"> ♥</span>
+          </button>
+          )}
+          
           <Link
             href="/about"
             className="text-2xl text-black hover:text-gray-700 font-semibold hover:-translate-y-1 hover:scale-110"
@@ -158,7 +195,7 @@ export default function Navbar() {
 
       {/* Login Modal */}
       {isClient && isModalOpen && (
-        <LoginModal closeModal={() => setIsModalOpen(false)} />
+        <LoginModal closeModal={closeModalWithReset} message={modalMessage}/>
       )}
     </nav>
   );

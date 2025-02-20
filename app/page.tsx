@@ -4,7 +4,7 @@ import HomeBody from "@/components/HomeBody";
 
 export default function Home() {
   return (
-    <div className="relative w-full">
+    <div className="w-full">
       <Hero />
       <HomeBody/>
     </div>

@@ -50,12 +50,12 @@ export default function SearchBody() {
 
     return (
         <div className="flex w-full">
-            <div className="w-[300px] bg-[#BEBEBE] h-screen left-0 top-0 p-4">
+            <div className="w-1/4 lg:w-[300px] bg-[#BEBEBE] h-screen left-0 top-0 p-4">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="outline"
-                            className="flex items-center justify-between w-[210px] h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4"
+                            className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4"
                         >
                             <span>Sort By: {sort || "None"}</span>
                             <ChevronDown className="w-5 h-5" />
@@ -75,7 +75,7 @@ export default function SearchBody() {
                 </DropdownMenu>
             </div>
 
-            <div className="flex-1  p-4">
+            <div className="flex-1  w-3/4 ">
                 <div className='flex items-center w-full max-w-md bg-white rounded-full overflow-hidden shadow-md mx-auto my-8 border-1 border-yellow-500'>
                     <input
                         type="text"
@@ -108,9 +108,9 @@ export default function SearchBody() {
                     </div>
                 </div>
 
-                <div className="text-2xl left-0 top-0 my-6">Add Dogs To Your Paw list by clicking the <span className="text-red-500">❤︎</span>  </div>
+                <div className="text-2xl left-0 top-0 my-6">Add Dogs To Your Paw list by clicking the <span className="text-red-500">❤︎</span> at the top right of the image  </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-24">
                     {allDogs.length > 0 ? (
                         allDogs.map((dog) =>
                         <DogCard key={dog.id} dog={dog} />)

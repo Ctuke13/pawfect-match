@@ -5,9 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface LoginModalProps {
   closeModal: () => void;
+  message?: string | null;
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ closeModal }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ closeModal, message  }) => {
   const { login } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -15,6 +16,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ closeModal }) => {
   const [zipcode, setZipcode] = useState("");
   const [ error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [ modalMessage, setModalMessage] = useState<string | null>(message)
 
 
   const handleLogin = async () => {
@@ -49,9 +51,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ closeModal }) => {
     }
   };
 
+  
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-10 flex justify-center items-center z-1">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96 relative z-50">
+
+        {message && (
+          <div className="text-center text-red-600 font-bold bg-red-100 p-3 rounded-md mb-4">
+            {message}
+          </div>
+        )}
+
         <h2 className="text-2xl font-bold text-center">Sign In</h2>
 
         {/* Input Fields */}
