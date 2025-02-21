@@ -33,6 +33,17 @@ export const searchDogsByZipCode = async (zipCode: string, page: number = 1, lim
 };
 
 // Fetch dogs by ID
+
+export const fetchAllDogs = async (): Promise<string[]> => {
+    try {
+        const response = await apiClient.get("/dogs/search?size=10000");
+        console.log("Total dogs fetched:", response.data.total);
+        return response.data.resultIds;
+    } catch (error) {
+        console.error("Error fetching all dogs:", error);
+        return []
+    }
+}
 export const getDogsById = async (dogIds: string[]) => {
     const response = await apiClient.post("/dogs", dogIds);
     return response.data;

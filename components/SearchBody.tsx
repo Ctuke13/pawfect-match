@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Dog } from "../types/dogs";
 import { useAuth } from "@/context/AuthContext";
-import { searchDogs, getDogsById } from "@/services/api";
+import { searchDogs, getDogsById, fetchAllDogs } from "@/services/api";
 import DogCard from "./ui/DogCard";
 import { Button } from "@/components/ui/button"
 import LoginModal from "./LoginModal";
@@ -17,13 +17,15 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
+import { shuffleArray } from "@/utils/shuffleArray";
 
 export default function SearchBody() {
     const { user } = useAuth();
     const [allDogs, setAllDogs] = useState<Dog[]>([]);
-    // const [displayedDogs, setDisplayedDogs]<Dog[]>([]);
-    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [shuffledDogIds, setShuffledDogIds] = useState<string[]>([]);
+    const [totalDogs, setTotalDogs] = useState(0);
 
+    const [showLoginModal, setShowLoginModal] = useState(false);
     const [breed, setBreed] = useState<string>("")
     const [zipCode, setZipcode] = useState("")
     const [sort, setSort] = useState<string>("");
@@ -42,24 +44,43 @@ export default function SearchBody() {
 
         const fetchDogs = async () => {
             try {
-                const from = (currentPage - 1) * dogsPerPage;
-
-                console.log('Fetching dogs from index:', from);
-                const searchResults = await searchDogs({ breed, zipCode }, from, dogsPerPage);
-
-                console.log("Search API Response:", searchResults)
-
-                if (searchResults.resultIds && searchResults.resultIds.length > 0) {
-                    const dogsData = await getDogsById(searchResults.resultIds);
-                    setAllDogs(dogsData);
-                }
+                    console.log("Fetching all dog IDs...");
+                    const allDogIds = await fetchAllDogs(); // ✅ Fetch all dog IDs
+                    console.log("Total dogs in API:", allDogIds.length); // ✅ Log total count
+                    
+                    setTotalDogs(allDogIds.length); // ✅ Store total count
+                    
+                    const shuffledIds = shuffleArray(allDogIds); // ✅ Shuffle once
+                    setShuffledDogIds(shuffledIds); // ✅ Persist order
+                    
+                    // Fetch first batch of dogs (page 1)
+                    const firstBatch = shuffledIds.slice(0, dogsPerPage);
+                    const firstDogs = await getDogsById(firstBatch);
+                    setAllDogs(firstDogs);
             } catch (error) {
                 console.error("Error fetching dogs:", error)
             }
         };
 
         fetchDogs();
-    }, [user, breed, zipCode, sort, currentPage]);
+    }, [user]);
+
+    useEffect(() => {
+        if (shuffledDogIds.length === 0) return;
+
+        const fetchDogsForPage = async () => {
+            try {
+                const from = (currentPage - 1) * dogsPerPage;
+                const pageDogIds = shuffledDogIds.slice(from, from + dogsPerPage); // ✅ Use persisted shuffled order
+                const dogsData = await getDogsById(pageDogIds);
+                setAllDogs(dogsData);
+            } catch (error) {
+                console.error("Error fetching paginated dogs:", error);
+            }
+        };
+
+        fetchDogsForPage();
+    }, [shuffledDogIds, currentPage]); // ✅ Fetch dogs only when page changes
 
     if(showLoginModal){
         return <LoginModal closeModal={() => setShowLoginModal(false)}/>;
