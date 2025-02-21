@@ -1,10 +1,12 @@
 "use client"
 
 import React, { useState, useEffect } from "react";
-import { Dog } from "../types/dogs"
+import { Dog } from "../types/dogs";
+import { useAuth } from "@/context/AuthContext";
 import { searchDogs, getDogsById } from "@/services/api";
 import DogCard from "./ui/DogCard";
 import { Button } from "@/components/ui/button"
+import LoginModal from "./LoginModal";
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -17,7 +19,10 @@ import {
 import { ChevronDown } from "lucide-react";
 
 export default function SearchBody() {
+    const { user } = useAuth();
     const [allDogs, setAllDogs] = useState<Dog[]>([]);
+    // const [displayedDogs, setDisplayedDogs]<Dog[]>([]);
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     const [breed, setBreed] = useState<string>("")
     const [zipCode, setZipcode] = useState("")
@@ -27,6 +32,14 @@ export default function SearchBody() {
     const dogsPerPage = 6;
 
     useEffect(() => {
+        if (!user) {
+            setShowLoginModal(true)
+        }
+    })
+
+    useEffect(() => {
+        if(!user) return;
+
         const fetchDogs = async () => {
             try {
                 const from = (currentPage - 1) * dogsPerPage;
@@ -46,7 +59,11 @@ export default function SearchBody() {
         };
 
         fetchDogs();
-    }, [breed, zipCode, sort, currentPage]);
+    }, [user, breed, zipCode, sort, currentPage]);
+
+    if(showLoginModal){
+        return <LoginModal closeModal={() => setShowLoginModal(false)}/>;
+    }
 
     return (
         <div className="flex w-full">
@@ -55,7 +72,7 @@ export default function SearchBody() {
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="outline"
-                            className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4"
+                            className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
                         >
                             <span>Sort By: {sort || "None"}</span>
                             <ChevronDown className="w-5 h-5" />
@@ -70,6 +87,46 @@ export default function SearchBody() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => setSort("Nearest")}>Nearest</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setSort("Furthest")}>Furthest</DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
+                        >
+                            <span>Age: {sort || "All"}</span>
+                            <ChevronDown className="w-5 h-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        align="start"
+                        className="w-56 bg-white font-bold shadow-md z-50"
+                    >
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem>All</DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu >
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
+                        >
+                            <span>Breed: {sort || "All"}</span>
+                            <ChevronDown className="w-5 h-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        align="start"
+                        className="w-56 bg-white font-bold shadow-md z-50"
+                    >
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem>All</DropdownMenuItem>
                         </DropdownMenuGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>

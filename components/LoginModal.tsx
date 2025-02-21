@@ -16,7 +16,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ closeModal, message  }) => {
   const [zipcode, setZipcode] = useState("");
   const [ error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [ modalMessage, setModalMessage] = useState<string | null>(message)
 
 
   const handleLogin = async () => {

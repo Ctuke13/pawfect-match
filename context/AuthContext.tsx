@@ -8,10 +8,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider : React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
         if (storedUser) setUser(JSON.parse(storedUser));
+        setIsLoading(false);
     }, []);
 
     const login = async (name: string, email: string, zipcode?: string) => {
@@ -51,6 +53,9 @@ export const AuthProvider : React.FC<{ children: ReactNode }> = ({ children }) =
           localStorage.setItem("user", JSON.stringify(updatedUser));
         }
       };
+
+      // ✅ Prevent flickering while checking localStorage
+    if (isLoading) return null; // Prevent UI flickers
 
     return (
         <AuthContext.Provider value={{ user, login, logout, updateFavorites, updateZipcode }}>
