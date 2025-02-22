@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { loginUser, logoutUser } from "@/services/auth";
+import { getBreeds } from "@/services/api";
 import { User, AuthContextType} from "../types/auth"
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -11,9 +12,28 @@ export const AuthProvider : React.FC<{ children: ReactNode }> = ({ children }) =
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) setUser(JSON.parse(storedUser));
-        setIsLoading(false);
+        const verifyAuth = async () => {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                const parsedUser = JSON.parse(storedUser)
+                setUser(parsedUser);
+
+                try {
+                    await getBreeds();
+                    console.log("User session is valid");
+                } catch (error: any) {
+                    if(error.response?.status === 401) {
+                        console.error("Session is expired, logging out user");
+                        logout();
+                    } else {
+                        console.error("Unexpected Error:", error)
+                    }                  
+                }
+            }
+            setIsLoading(false);
+        };  
+        
+        verifyAuth();
     }, []);
 
     const login = async (name: string, email: string, zipcode?: string) => {
