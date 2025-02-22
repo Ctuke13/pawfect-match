@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Dog } from "../types/dogs";
 import { useAuth } from "@/context/AuthContext";
-import { searchDogs, getDogsById, fetchAllDogs } from "@/services/api";
+import { searchDogs, getDogsById, fetchAllDogs, sortDogsByZip, getLocationByZip } from "@/services/api";
 import DogCard from "./ui/DogCard";
 import { Button } from "@/components/ui/button"
 import LoginModal from "./LoginModal";
@@ -71,16 +71,59 @@ export default function SearchBody() {
         const fetchDogsForPage = async () => {
             try {
                 const from = (currentPage - 1) * dogsPerPage;
-                const pageDogIds = shuffledDogIds.slice(from, from + dogsPerPage); // ✅ Use persisted shuffled order
+                const pageDogIds = shuffledDogIds.slice(from, from + dogsPerPage); 
                 const dogsData = await getDogsById(pageDogIds);
-                setAllDogs(dogsData);
+
+                const zipCodes = [...new Set(dogsData.map((dog: Dog) => dog.zip_code ))] as string[];
+                const zipToCityMap = await getLocationByZip(zipCodes)
+
+                const dogsWithCity = dogsData.map((dog: Dog) => ({
+                    ...dog,
+                    city: zipToCityMap[dog.zip_code] || "Unknown"
+                }))
+
+                setAllDogs(dogsWithCity);
             } catch (error) {
                 console.error("Error fetching paginated dogs:", error);
             }
         };
 
         fetchDogsForPage();
-    }, [shuffledDogIds, currentPage]); // ✅ Fetch dogs only when page changes
+    }, [shuffledDogIds, currentPage]); 
+
+    const handleSearch = async () => {
+        try {
+            let filterDogIds: string[] = [];
+
+            if (breed && zipCode) {
+                const searchResults = await searchDogs({ breeds: [breed] }, 0, 100);
+                let dogIds = searchResults.resultIds;
+
+                filterDogIds = await sortDogsByZip(dogIds, zipCode);
+            } else if (breed) {
+                const searchResults = await searchDogs({ breeds: [breed]}, 0, 100);
+                filterDogIds = shuffleArray(searchResults.resultIds);
+            } else if (zipCode) {
+                const allDogIds = await fetchAllDogs();
+                filterDogIds = await sortDogsByZip(allDogIds, zipCode)
+            } else {
+                filterDogIds = await fetchAllDogs();
+            }
+
+            if (filterDogIds.length > 0) {
+                setShuffledDogIds(filterDogIds);
+                setCurrentPage(1);
+
+                const firstBatch = filterDogIds.slice(0, dogsPerPage);
+                const firstDogs = await getDogsById(firstBatch);
+                setAllDogs(firstDogs);
+            } else {
+                setAllDogs([]);
+            }
+        } catch (error) {
+            console.error("Error filtering dogs:", error);
+        }
+    };
 
     if(showLoginModal){
         return <LoginModal closeModal={() => setShowLoginModal(false)}/>;
@@ -173,7 +216,7 @@ export default function SearchBody() {
                             onChange={(e) => setZipcode(e.target.value)}
                             className='w-full px-4 py-2 outline-none rounded-r-full'
                         />
-                        <button className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-500'>
+                        <button className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-500' onClick={handleSearch}>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 50 50"
