@@ -1,19 +1,16 @@
 import { apiClient } from "./api";
 
 //Logs in or signs up user using FetchAPI.
-export const loginUser = async (name: string, email: string, zipcode?: string) => {
+export const loginUser = async (name: string, email: string) => {
     try {
         const response = await apiClient.post("/auth/login", { name, email });
 
-        if (response.status === 200) {
-            const userData = { name, email, zipcode };
-            localStorage.setItem("user", JSON.stringify(userData));
-            return userData;
-        }
-
-        throw new Error("Login failed");
+        console.log("✅ Login successful, session is active.");
+        
+        return true; // ✅ Indicate success without returning a token
     } catch (error) {
-        console.error("Error logging in:", error);
+        console.error("❌ Login failed:", error);
+        return false;
     }
 };
 

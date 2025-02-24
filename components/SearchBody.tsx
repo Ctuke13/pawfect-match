@@ -46,7 +46,6 @@ export default function SearchBody() {
             try {
                     console.log("Fetching all dog IDs...");
                     const allDogIds = await fetchAllDogs(); // ✅ Fetch all dog IDs
-                    console.log("Total dogs in API:", allDogIds.length); // ✅ Log total count
                     
                     setTotalDogs(allDogIds.length); // ✅ Store total count
                     
@@ -79,8 +78,9 @@ export default function SearchBody() {
 
                 const dogsWithCity = dogsData.map((dog: Dog) => ({
                     ...dog,
-                    city: zipToCityMap[dog.zip_code] || "Unknown"
-                }))
+                    city: zipToCityMap[dog.zip_code]?.city || "Unknown",
+                    state: zipToCityMap[dog.zip_code]?.state || "",
+                }));
 
                 setAllDogs(dogsWithCity);
             } catch (error) {
