@@ -39,7 +39,7 @@ export const searchDogs = async (filters: any = {}, from: number = 0, page: numb
 }
 
 // Search by breed
-export const searchDogsByBreed = async (breed: string, page: number = 1, limit: number = 6) => {
+export const searchDogsByBreed = async (breed: string, page: number = 1, limit: number = 100) => {
     return await searchDogs({ breed }, page, limit)
 }
 
@@ -59,34 +59,43 @@ export const fetchAllDogs = async (): Promise<string[]> => {
         return []
     }
 }
-export const getDogsById = async (dogIds: string[]) => {
+export const getDogsById = async (dogIds: string[]): Promise<Dog[]> => {
     try {
-        console.log("🐶 Fetching Dogs by IDs:", dogIds);
-
         if (dogIds.length === 0) {
             console.error("❌ No dog IDs provided to fetch!");
             return [];
         }
 
-        // ✅ Split into batches of 100 IDs each
+        console.log(`🐶 Fetching ${dogIds.length} Dogs by IDs...`);
+
         const batchSize = 100;
         let allDogs: Dog[] = [];
 
+        // Fetch dogs in batches of 100
+        const fetchBatch = async (batch: string[]) => {
+            try {
+                const response = await apiClient.post("/dogs", batch);
+                return response.data;
+            } catch (error) {
+                console.error("❌ Error fetching batch:", error);
+                return []; // Return an empty array instead of failing the whole function
+            }
+        };
+
+        const fetchPromises = [];
         for (let i = 0; i < dogIds.length; i += batchSize) {
             const batch = dogIds.slice(i, i + batchSize);
-            console.log(`🔄 Fetching batch ${i / batchSize + 1}`);
-
-            const response = await apiClient.post("/dogs", batch);
-            allDogs = [...allDogs, ...response.data];
-
-            // ✅ Prevent API from blocking due to too many requests
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            fetchPromises.push(fetchBatch(batch));
         }
 
-        console.log("✅ Dogs fetched:", allDogs.length);
+        // Resolve all batch requests concurrently
+        const batchResults = await Promise.all(fetchPromises);
+        allDogs = batchResults.flat(); // Flatten the array of batches
+
+        console.log(`✅ Successfully fetched ${allDogs.length} dogs.`);
         return allDogs;
     } catch (error) {
-        console.error("❌ Error fetching dogs by ID:", error);
+        console.error("❌ Critical error fetching dogs:", error);
         return [];
     }
 };
@@ -163,15 +172,15 @@ export const sortDogsByZip = async (dogIds: string[], zipCode: string): Promise<
         });
 
         console.log("Sorted Dog IDs:", sortedDogs.map((dog: Dog) => dog.id));
-        return sortedDogs.map((dog:Dog) => dog.id); 
+        return sortedDogs.map((dog:Dog) => dog.id.toLocaleString()); 
     } catch (error) {
         console.error("Error sorting dogs by zip:", error);
         return dogIds;
     }
-}
+};
 
 
-export const getLocationByZip = async (zipCodes: string[]) : Promise<Record<string, { city: string; state: string}>> => {
+export const getLocationByZip = async (zipCodes: string[]) : Promise<Record<string, { city: string; state: string; latitude: number; longitude: number; }>> => {
     try {
         const response = await apiClient.post("/locations", zipCodes);
         if(!response || !response.data || !Array.isArray(response.data)) {
@@ -192,8 +201,6 @@ export const getLocationByZip = async (zipCodes: string[]) : Promise<Record<stri
                 longitude: location.longitude
             };
         });
-
-        console.log("✅ Locations mapped successfully:", zipToLocationMap);
 
         return zipToLocationMap;
     } catch(error) {

@@ -16,19 +16,32 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ChevronDown } from "lucide-react";
-import { shuffleArray } from "@/utils/shuffleArray";
+import { LoadingSpinner } from "./ui/loadingspinner";
 
 export default function SearchBody() {
     const { user } = useAuth();
-    const [allDogs, setAllDogs] = useState<Dog[]>([]);
-    const [shuffledDogIds, setShuffledDogIds] = useState<string[]>([]);
-    const [totalDogs, setTotalDogs] = useState(0);
-
     const [showLoginModal, setShowLoginModal] = useState(false);
-    const [breed, setBreed] = useState<string>("")
-    const [zipCode, setZipcode] = useState("")
+
+    const [breeds, setBreeds] = useState<string[]>([]);
+    const [ages, setAges] = useState<string[]>([]);
+
+    const [searchResults, setSearchResults] = useState<Dog[]>([]);
+    const [filteredDogs, setFilteredDogs] = useState<Dog[]>([]);
+
+    const [loadingMore, setLoadingMore] = useState(false);
+
+
     const [sort, setSort] = useState<string>("");
+    const [sortOrder, setSortOrder] = useState<string>("asc");
+
+    const [selectedBreed, setSelectedBreed] = useState<string>("");
+    const [selectedAge, setSelectedAge] = useState<string>("");
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchZipCode, setSearchZipcode] = useState("")
 
     const [currentPage, setCurrentPage] = useState(1);
     const dogsPerPage = 6;
@@ -40,93 +53,160 @@ export default function SearchBody() {
     })
 
     useEffect(() => {
-        if(!user) return;
+        if (!user) return;
+
+        const fetchBreedsAndAges = async () => {
+            try {
+                const dogIds = await searchDogs({ size: 10000 });
+                const dogDetails = await getDogsById(dogIds.resultIds);
+                console.log("Dog details from fetchBreedsAndAges:", dogDetails.length);
+
+                const breedList = [...new Set(dogDetails.map((dog: Dog) => dog.breed))].sort();
+                const ageList = [...new Set(dogDetails.map((dog: Dog) => String(dog.age)))].sort();
+
+                setBreeds(breedList);
+                setAges(ageList);
+            } catch (error) {
+                console.log("Error fetching breeds and ages:", error);
+            }
+        };
+
+        fetchBreedsAndAges();
+    }, [user]);
+
+    // Fetch default dogs on login
+    useEffect(() => {
+        if (!user) return;
 
         const fetchDogs = async () => {
             try {
-                    console.log("Fetching all dog IDs...");
-                    const allDogIds = await fetchAllDogs(); // ✅ Fetch all dog IDs
-                    
-                    setTotalDogs(allDogIds.length); // ✅ Store total count
-                    
-                    const shuffledIds = shuffleArray(allDogIds); // ✅ Shuffle once
-                    setShuffledDogIds(shuffledIds); // ✅ Persist order
-                    
-                    // Fetch first batch of dogs (page 1)
-                    const firstBatch = shuffledIds.slice(0, dogsPerPage);
-                    const firstDogs = await getDogsById(firstBatch);
-                    setAllDogs(firstDogs);
+                let defaultQuery: Record<string, any> = {
+                    size: 100,
+                    sort: "breed:asc"
+                }
+
+                console.log("🐶 Fetching default dogs...", defaultQuery);
+
+                const searchResults = await searchDogs(defaultQuery, 0, 1, 100);
+                const dogDetails = await getDogsById(searchResults.resultIds);
+
+                console.log("Dog details from fetchDogs:", dogDetails.length);
+
+                setSearchResults(dogDetails);
+                setFilteredDogs(dogDetails);
+                setCurrentPage(1);
             } catch (error) {
-                console.error("Error fetching dogs:", error)
+                console.error("❌ Error fetching default dogs:", error);
             }
-        };
+        }
 
         fetchDogs();
-    }, [user]);
-
-    useEffect(() => {
-        if (shuffledDogIds.length === 0) return;
-
-        const fetchDogsForPage = async () => {
-            try {
-                const from = (currentPage - 1) * dogsPerPage;
-                const pageDogIds = shuffledDogIds.slice(from, from + dogsPerPage); 
-                const dogsData = await getDogsById(pageDogIds);
-
-                const zipCodes = [...new Set(dogsData.map((dog: Dog) => dog.zip_code ))] as string[];
-                const zipToCityMap = await getLocationByZip(zipCodes)
-
-                const dogsWithCity = dogsData.map((dog: Dog) => ({
-                    ...dog,
-                    city: zipToCityMap[dog.zip_code]?.city || "Unknown",
-                    state: zipToCityMap[dog.zip_code]?.state || "",
-                }));
-
-                setAllDogs(dogsWithCity);
-            } catch (error) {
-                console.error("Error fetching paginated dogs:", error);
-            }
-        };
-
-        fetchDogsForPage();
-    }, [shuffledDogIds, currentPage]); 
+    }, [user])
 
     const handleSearch = async () => {
         try {
-            let filterDogIds: string[] = [];
-
-            if (breed && zipCode) {
-                const searchResults = await searchDogs({ breeds: [breed] }, 0, 100);
-                let dogIds = searchResults.resultIds;
-
-                filterDogIds = await sortDogsByZip(dogIds, zipCode);
-            } else if (breed) {
-                const searchResults = await searchDogs({ breeds: [breed]}, 0, 100);
-                filterDogIds = shuffleArray(searchResults.resultIds);
-            } else if (zipCode) {
-                const allDogIds = await fetchAllDogs();
-                filterDogIds = await sortDogsByZip(allDogIds, zipCode)
-            } else {
-                filterDogIds = await fetchAllDogs();
+            let query: Record<string, any> = {
+                size: 100,
             }
 
-            if (filterDogIds.length > 0) {
-                setShuffledDogIds(filterDogIds);
-                setCurrentPage(1);
+            if (searchQuery) query.breeds = [selectedBreed];
+            if (searchZipCode) query.zipCodes = [searchZipCode];
 
-                const firstBatch = filterDogIds.slice(0, dogsPerPage);
-                const firstDogs = await getDogsById(firstBatch);
-                setAllDogs(firstDogs);
-            } else {
-                setAllDogs([]);
-            }
+            query.sort = `${sort}:${sortOrder}`;
+
+            console.log("🐶 Searching for dogs...", query);
+
+            const searchResults = await searchDogs(query);
+            const dogDetails = await getDogsById(searchResults.resultIds);
+
+            setSearchResults(dogDetails);
+            setFilteredDogs(dogDetails);
+            setCurrentPage(1);
         } catch (error) {
-            console.error("Error filtering dogs:", error);
+            console.error("❌ Error fetching search results:", error);
+        }
+    }
+
+
+    // Function to apply sorting
+    const applySorting = async (dogs: Dog[]) => {
+        return [...dogs].sort((a, b) => {
+            let valueA = a[sort as keyof Dog];
+            let valueB = b[sort as keyof Dog];
+
+            if (valueA !== undefined && typeof valueA === "string") valueA = valueA.toLowerCase();
+            if (valueB !== undefined && typeof valueB === "string") valueB = valueB.toLowerCase();
+
+            if (sortOrder === "asc") {
+                if (valueA !== undefined && valueB !== undefined) {
+                    return valueA > valueB ? 1 : -1;
+                } else {
+                    return 0;
+                }
+            } else {
+                if (valueA !== undefined && valueB !== undefined) {
+                    return valueA < valueB ? 1 : -1;
+                } else {
+                    return 0;
+                }
+            }
+        })
+    }
+
+    const applyFiltering = async () => {
+        let filtered = searchResults;
+
+        if (selectedBreed) {
+            filtered = filtered.filter((dog: Dog) => dog.breed === selectedBreed);
+        }
+
+        if (selectedAge) {
+            filtered = filtered.filter((dog: Dog) => String(dog.age) === selectedAge);
+        }
+
+        setFilteredDogs(await applySorting(filtered));
+        setCurrentPage(1); // Reset to the first page after filtering
+    }
+
+    const handleSortChange = (newSort: string) => {
+        setSort(newSort);
+        setSortOrder("asc");
+        applyFiltering();
+    }
+
+    // Paginate dogs
+    const paginatedDogs = filteredDogs.slice((currentPage - 1) * dogsPerPage, currentPage * dogsPerPage);
+
+    const handleNextPage = async () => {
+        const maxPages = Math.ceil(searchResults.length / dogsPerPage);
+
+        // If we reach the last page, check if more dogs exist
+        if (currentPage >= maxPages) {
+            setLoadingMore(true);
+            console.log("Fetching more dogs...");
+            try {
+                const fromIndex = searchResults.length; // Get next batch after current results
+                const searchResultsNewBatch = await searchDogs({ size: 100, sort: "breed:asc" }, fromIndex);
+                const newDogDetails = await getDogsById(searchResultsNewBatch.resultIds);
+
+                // Append new dogs to the existing list
+                setSearchResults((prev) => [...prev, ...newDogDetails]);
+                setFilteredDogs((prev) => [...prev, ...newDogDetails]);
+
+                setCurrentPage((prev) => prev + 1); // Move to the next page
+            } catch (error) {
+                console.error("❌ Error fetching more dogs:", error);
+            } finally {
+                setLoadingMore(false);
+            }
+        } else {
+            setCurrentPage((prev) => prev + 1);
         }
     };
 
-    if(showLoginModal){
-        return <LoginModal closeModal={() => setShowLoginModal(false)}/>;
+
+    if (showLoginModal) {
+        return <LoginModal closeModal={() => setShowLoginModal(false)} />;
     }
 
     return (
@@ -149,11 +229,32 @@ export default function SearchBody() {
                         <DropdownMenuGroup>
                             <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setSort("Nearest")}>Nearest</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSort("Furthest")}>Furthest</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setSort("Nearest") }}>Nearest</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setSort("Furthest") }}>Furthest</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { handleSortChange("Age"); }}>Age</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { handleSortChange("Breed"); }}>Breed</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { handleSortChange("Name"); }}>Name</DropdownMenuItem>
                         </DropdownMenuGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                {sort === "Age" || sort === "Breed" || sort === "Name" ? (
+                    <RadioGroup
+                        value={sortOrder}
+                        onValueChange={(value) => setSortOrder(value)}
+                        className="flex flex-col mx-4 mt-4"
+                    >
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="asc" id="ascending" />
+                            <Label htmlFor="ascending">Ascending</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="desc" id="descending" />
+                            <Label htmlFor="descending">Descending</Label>
+                        </div>
+                    </RadioGroup>
+                ) : null}
+
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -171,6 +272,11 @@ export default function SearchBody() {
                     >
                         <DropdownMenuGroup>
                             <DropdownMenuItem>All</DropdownMenuItem>
+                            {ages.map((age) => (
+                                <DropdownMenuItem key={age} onClick={() => { setSelectedAge(age); applyFiltering(); }}>
+                                    {age}
+                                </DropdownMenuItem>
+                            ))}
                         </DropdownMenuGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -191,6 +297,11 @@ export default function SearchBody() {
                     >
                         <DropdownMenuGroup>
                             <DropdownMenuItem>All</DropdownMenuItem>
+                            {breeds.map((breed) => (
+                                <DropdownMenuItem key={breed} onClick={() => { setSelectedBreed(breed); applyFiltering(); }}>
+                                    {breed}
+                                </DropdownMenuItem>
+                            ))}
                         </DropdownMenuGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -200,9 +311,9 @@ export default function SearchBody() {
                 <div className='flex items-center w-full max-w-md bg-white rounded-full overflow-hidden shadow-md mx-auto my-8 border-1 border-yellow-500'>
                     <input
                         type="text"
-                        placeholder='Enter Breed'
-                        value={breed}
-                        onChange={(e) => setBreed(e.target.value)}
+                        placeholder='Enter Name or Breed'
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className='w-1/2 px-4 py-2 outline-none rounded-full'
                     />
 
@@ -212,8 +323,8 @@ export default function SearchBody() {
                         <input
                             type='text'
                             placeholder='Enter Zip Code'
-                            value={zipCode}
-                            onChange={(e) => setZipcode(e.target.value)}
+                            value={searchZipCode}
+                            onChange={(e) => setSearchZipcode(e.target.value)}
                             className='w-full px-4 py-2 outline-none rounded-r-full'
                         />
                         <button className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-500' onClick={handleSearch}>
@@ -232,9 +343,9 @@ export default function SearchBody() {
                 <div className="text-2xl left-0 top-0 my-6">Add Dogs To Your Paw list by clicking the <span className="text-red-500">❤︎</span> at the top right of the image  </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-24">
-                    {allDogs.length > 0 ? (
-                        allDogs.map((dog) =>
-                        <DogCard key={dog.id} dog={dog} />)
+                    {paginatedDogs.length > 0 ? (
+                        paginatedDogs.map((dog) =>
+                            <DogCard key={dog.id} dog={dog} />)
                     ) : (
                         <p className="text-4xl text-center text-gray-500 col-span-3">No dogs found.</p>
                     )}
@@ -243,7 +354,7 @@ export default function SearchBody() {
                 <div className="flex justify-center mt-6 space-x-4">
                     <Button
                         variant="outline"
-                        onClick={() => setCurrentPage((prev) => Math.max(prev -1, 1))}
+                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
                     >
                         Previous
@@ -251,10 +362,15 @@ export default function SearchBody() {
                     <span className="text-lg font-bold">Page {currentPage}</span>
                     <Button
                         variant="outline"
-                        onClick={() => setCurrentPage((prev) => prev + 1)}
-                        disabled={allDogs.length < dogsPerPage} 
+                        onClick={handleNextPage}
+                        disabled={loadingMore}
                     >
-                        Next
+                        {loadingMore ? (
+                            <>
+                                Loading...
+                                <LoadingSpinner size={16} className="ml-2" />
+                            </>
+                        ) : "Next"}
                     </Button>
                 </div>
             </div>
