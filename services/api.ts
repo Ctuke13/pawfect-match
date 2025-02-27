@@ -33,10 +33,20 @@ export const getBreeds = async (): Promise<string[]> => {
 };
 
 // Search with filters
-export const searchDogs = async (filters: any = {}, from: number = 0, page: number = 1, limit: number = 6) => {
-    const response = await apiClient.get("/dogs/search", { params: { ...filters, from, limit, size: limit } });
+export const searchDogs = async (filters: any = {}, from: number = 0, page: number = 1, limit: number = 100) => {
+    console.log("📡 Fetching dogs with filters:", filters, "From:", from, "Limit:", limit);
+
+    const response = await apiClient.get("/dogs/search", {
+        params: {
+            ...filters,
+            from, // ✅ Correctly passing the `from` parameter for pagination
+            size: limit, // ✅ Ensure API uses this instead of `limit`
+        }
+    });
+
+    console.log("🐶 Response from searchDogs:", response.data);
     return response.data;
-}
+};
 
 // Search by breed
 export const searchDogsByBreed = async (breed: string, page: number = 1, limit: number = 100) => {
@@ -74,6 +84,10 @@ export const getDogsById = async (dogIds: string[]): Promise<Dog[]> => {
         // Fetch dogs in batches of 100
         const fetchBatch = async (batch: string[]) => {
             try {
+                if(!Array.isArray(batch) || batch.length === 0) {
+                    console.error("❌ Invalid batch of dog IDs:", batch);
+                    return [];
+                }
                 const response = await apiClient.post("/dogs", batch);
                 return response.data;
             } catch (error) {
@@ -112,72 +126,47 @@ export const updateUserFavorites = (favorites: string[]) => {
 
 export const sortDogsByZip = async (dogIds: string[], zipCode: string): Promise<string[]> => {
     try {
+        if (!zipCode) {
+            console.error("❌ Zip code is required for distance sorting.");
+            return dogIds;
+        }
 
-        // Fetch full dog objects to get their zip codes
-        const limitedDogIds = dogIds.slice(0, 100);  
-        const dogsData = await getDogsById(limitedDogIds);
+        const dogsData = await getDogsById(dogIds);
         if (!dogsData || dogsData.length === 0) {
             console.error("❌ No dog data found!");
             return [];
         }
 
-        // Extract unique zip codes from fetched dogs
         const zipCodes = [...new Set(dogsData.map((dog: Dog) => dog.zip_code))];
-
-        console.log("Unique zip codes found:", zipCodes);
-
-        // Fetch locations for the dogs' zip codes
         const zipToLocationMap = await getLocationByZip(zipCodes);
-        if (Object.keys(zipToLocationMap).length === 0) {
-            console.error("❌ No location data received for dog zip codes!");
-            return dogIds;
-        }
-        console.log("✅ Location data received for dog zip codes.", zipToLocationMap);
-
-        // Fetch location for the user's input zip code
         const userLocationMap = await getLocationByZip([zipCode]);
-        if (Object.keys(userLocationMap).length === 0) {
-                console.error("❌ Invalid user zip code or location not found.");
-            return dogIds;
-        }
 
-        const userLocation = userLocationMap[zipCode];
-        console.log("✅ Location data received for user zip code.", userLocation);
- 
-        if (!userLocation) {
+        if (!userLocationMap[zipCode]) {
             console.error("❌ Invalid user zip code or location not found.");
             return dogIds;
         }
 
-        // Compute distance and sort dogs
+        const userLocation = userLocationMap[zipCode];
+
         const sortedDogs = dogsData.sort((a: Dog, b: Dog) => {
             const locationA = zipToLocationMap[a.zip_code];
             const locationB = zipToLocationMap[b.zip_code];
 
-            if(!locationA || !locationB) return 0;
+            if (!locationA || !locationB) return 0;
 
-            const distanceA = calculateDistance(
-                { latitude: userLocation.latitude, longitude: userLocation.longitude },
-                { latitude: locationA.latitude, longitude: locationA.longitude }
-            );
-            const distanceB = calculateDistance(
-                { latitude: userLocation.latitude, longitude: userLocation.longitude },
-                { latitude: locationB.latitude, longitude: locationB.longitude }
-            );
+            const distanceA = calculateDistance(userLocation, locationA);
+            const distanceB = calculateDistance(userLocation, locationB);
 
-            console.log(`📏 Distance A (${a.zip_code}): ${distanceA.toFixed(2)} km`);
-            console.log(`📏 Distance B (${b.zip_code}): ${distanceB.toFixed(2)} km`);
-
-            return distanceA - distanceB // Sort Ascending
+            return distanceA - distanceB; // Always sort ascending (nearest first)
         });
 
-        console.log("Sorted Dog IDs:", sortedDogs.map((dog: Dog) => dog.id));
-        return sortedDogs.map((dog:Dog) => dog.id.toLocaleString()); 
+        return sortedDogs.map((dog: Dog) => dog.id);
     } catch (error) {
-        console.error("Error sorting dogs by zip:", error);
+        console.error("❌ Error sorting dogs by zip:", error);
         return dogIds;
     }
 };
+
 
 
 export const getLocationByZip = async (zipCodes: string[]) : Promise<Record<string, { city: string; state: string; latitude: number; longitude: number; }>> => {

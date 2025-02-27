@@ -17,6 +17,7 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ChevronDown } from "lucide-react";
 import { LoadingSpinner } from "./ui/loadingspinner";
@@ -30,6 +31,9 @@ export default function SearchBody() {
 
     const [searchResults, setSearchResults] = useState<Dog[]>([]);
     const [filteredDogs, setFilteredDogs] = useState<Dog[]>([]);
+    const [isFiltered, setIsFiltered] = useState(false);
+
+    const [totalDogs, setTotalDogs] = useState(0);
 
     const [loadingMore, setLoadingMore] = useState(false);
 
@@ -57,15 +61,18 @@ export default function SearchBody() {
 
         const fetchBreedsAndAges = async () => {
             try {
-                const dogIds = await searchDogs({ size: 10000 });
-                const dogDetails = await getDogsById(dogIds.resultIds);
-                console.log("Dog details from fetchBreedsAndAges:", dogDetails.length);
+                const allDogIds = await fetchAllDogs();
+                const dogDetails = await getDogsById(allDogIds);
 
+                // Extract unique breeds and ages
                 const breedList = [...new Set(dogDetails.map((dog: Dog) => dog.breed))].sort();
-                const ageList = [...new Set(dogDetails.map((dog: Dog) => String(dog.age)))].sort();
+                const ageList = [...new Set(dogDetails.map((dog: Dog) => Number(dog.age)))]
+                    .filter(age => !isNaN(age) && age >= 0) // Ensure valid ages
+                    .sort((a, b) => a - b);
 
                 setBreeds(breedList);
-                setAges(ageList);
+                setAges(ageList.map(String));
+
             } catch (error) {
                 console.log("Error fetching breeds and ages:", error);
             }
@@ -81,19 +88,23 @@ export default function SearchBody() {
         const fetchDogs = async () => {
             try {
                 let defaultQuery: Record<string, any> = {
-                    size: 100,
+                    size: dogsPerPage,
                     sort: "breed:asc"
                 }
 
                 console.log("🐶 Fetching default dogs...", defaultQuery);
 
-                const searchResults = await searchDogs(defaultQuery, 0, 1, 100);
+                const searchResults = await searchDogs(defaultQuery, 0, 1, dogsPerPage);
+
+                console.log("Search results from fetchDogs:", searchResults);
+
                 const dogDetails = await getDogsById(searchResults.resultIds);
 
                 console.log("Dog details from fetchDogs:", dogDetails.length);
 
-                setSearchResults(dogDetails);
+                setSearchResults(searchResults.resultIds);
                 setFilteredDogs(dogDetails);
+                setTotalDogs(searchResults.total);
                 setCurrentPage(1);
             } catch (error) {
                 console.error("❌ Error fetching default dogs:", error);
@@ -153,54 +164,299 @@ export default function SearchBody() {
         })
     }
 
-    const applyFiltering = async () => {
-        let filtered = searchResults;
+    const applyFiltering = async (newBreed?: string, newAge?: string) => {
+        try {
+            let query: Record<string, any> = {
+                size: dogsPerPage,
+                from: 0,
+            };
 
-        if (selectedBreed) {
-            filtered = filtered.filter((dog: Dog) => dog.breed === selectedBreed);
+            if (newBreed) {
+                setSelectedBreed(newBreed);
+                query.breeds = [newBreed];
+            } else if (selectedBreed) {
+                query.breeds = [selectedBreed];
+            }
+
+            if (newAge) {
+                setSelectedAge(newAge);
+            }
+
+            query.ageMin = newAge || selectedAge;
+            query.ageMax = newAge || selectedAge;
+
+            console.log("🐶 Applying filters:", query);
+
+            const searchResults = await searchDogs(query);
+
+            console.log("Total Filtered Dogs:", searchResults.total);
+            console.log("Search Results from applyFiltering:", searchResults)
+
+
+            // Fetch the first batch of dog details for display
+            const dogDetails = await getDogsById(searchResults.resultIds.slice(0, dogsPerPage));
+
+            console.log("Filtered Dog Results:", dogDetails.length);
+            setTotalDogs(searchResults.total);
+            setFilteredDogs(dogDetails);
+            setSearchResults(searchResults.resultIds);
+
+            setIsFiltered(true);
+        } catch (error) {
+            console.error("❌ Error applying filters:", error);
         }
+    };
 
-        if (selectedAge) {
-            filtered = filtered.filter((dog: Dog) => String(dog.age) === selectedAge);
-        }
-
-        setFilteredDogs(await applySorting(filtered));
-        setCurrentPage(1); // Reset to the first page after filtering
-    }
-
-    const handleSortChange = (newSort: string) => {
+    const handleSortChange = async (newSort: string) => {
         setSort(newSort);
-        setSortOrder("asc");
-        applyFiltering();
+
+        if (newSort === "Nearest" || newSort === "Furthest") {
+            if (!user?.zipcode) {
+                console.error("❌ User zipcode is required for distance sorting.");
+            }
+
+
+            setLoadingMore(true);
+
+            try {
+                console.log("📡 Fetching dog IDs based on filters... ")
+
+                // Apply filters if they exist
+                let query: Record<string, any> = {
+                    size: 100,
+                };
+
+                if (selectedBreed) query.breeds = [selectedBreed];
+                if (selectedAge) {
+                    query.ageMin = selectedAge;
+                    query.ageMax = selectedAge;
+                }
+
+                //Fetch dogs that match the filters
+                const searchResults = await searchDogs(query);
+                const searchResultsIds = searchResults.resultIds;
+
+                console.log(`🐶 Found ${searchResultsIds.length} filtered dogs.`)
+
+                if (searchResultsIds.length === 0) {
+                    console.warn("🚨 No dogs found matching the filters.")
+                    setFilteredDogs([]);
+                    setSearchResults([]);
+                    setTotalDogs(0);
+                    return;
+                }
+
+                console.log("📡 Fetching full dog details...")
+                const dogDetails = await getDogsById(searchResultsIds);
+                console.log("✅ Successfully fetched to be sorted and/or filtered dogs.")
+
+                console.log("📡 Sorting filtered dogs by distance...");
+                const sortedDogIds = await sortDogsByZip(dogDetails.map((dog: Dog) => dog.id as string), user?.zipcode as string);
+
+                let sortedDogs = await getDogsById(sortedDogIds);
+
+                if (newSort === "Furthest") {
+                    sortedDogs.reverse();
+                }
+
+                console.log("✅ Successfully sorted filtered dogs!");
+
+                // Store sorted list in searchResults for paginated display
+                setSearchResults(sortedDogIds);
+                setFilteredDogs(sortedDogs.slice(0, dogsPerPage));
+                setTotalDogs(sortedDogs.length);
+                setCurrentPage(1); // Reset pagination
+            } catch (error) {
+                console.error("❌ Error sorting dogs:", error);
+            } finally {
+                setLoadingMore(false);
+            }
+        } else {           
+            setSortOrder("asc")
+            applySorting(filteredDogs);
+        }
     }
 
     // Paginate dogs
     const paginatedDogs = filteredDogs.slice((currentPage - 1) * dogsPerPage, currentPage * dogsPerPage);
 
+    // const handleNextPage = async () => {
+    //     if (loadingMore) return;
+    //     if (searchResults.length === 0) return;
+
+    //     setLoadingMore(true);
+
+    //     try {
+    //         if (!isFiltered) {
+    //             const maxPages = Math.ceil(searchResults.length / dogsPerPage);
+
+    //             // If we reach the last page, check if more dogs exist
+    //             if (currentPage >= maxPages) {
+    //                 setLoadingMore(true);
+    //                 console.log("Fetching more dogs...");
+    //                 try {
+    //                     const fromIndex = searchResults.length; // Get next batch after current results
+    //                     const searchResultsNewBatch = await searchDogs({ size: 100, sort: "breed:asc" }, fromIndex);
+    //                     const newDogDetails = await getDogsById(searchResultsNewBatch.resultIds);
+
+    //                     // Append new dogs to the existing list
+    //                     setSearchResults((prev) => [...prev, ...newDogDetails]);
+    //                     setFilteredDogs((prev) => [...prev, ...newDogDetails]);
+
+    //                     setCurrentPage((prev) => prev + 1); // Move to the next page
+    //                 } catch (error) {
+    //                     console.error("❌ Error fetching more dogs:", error);
+    //                 } finally {
+    //                     setLoadingMore(false);
+    //                 }
+    //             } else {
+    //                 setCurrentPage((prev) => prev + 1);
+    //                 setLoadingMore
+    //             }
+    //             return;
+    //         }
+    //         // 📌 Paginate filtered results
+    //     if (filteredDogs.length >= totalDogs) {
+    //         console.log("🚫 No more filtered dogs to fetch.");
+    //         setLoadingMore(false);
+    //         return;
+    //     }
+
+    //     let query: Record<string, any> = {
+    //         size: dogsPerPage,
+    //         from: searchResults.length, // Move forward in results
+    //     };
+
+    //     if (selectedBreed) query.breeds = [selectedBreed];
+    //     if (selectedAge) {
+    //         query.ageMin = selectedAge;
+    //         query.ageMax = selectedAge;
+    //     }
+
+    //     console.log("🐶 Fetching more filtered dogs...", query);
+
+    //     const searchResultsNewBatch = await searchDogs(query);
+    //     if (!searchResultsNewBatch.resultIds || searchResultsNewBatch.resultIds.length === 0) {
+    //         console.log("🚫 No more filtered results.");
+    //         setLoadingMore(false);
+    //         return;
+    //     }
+
+    //     // Fetch new batch of dog details
+    //     const newDogDetails = await getDogsById(searchResultsNewBatch.resultIds);
+
+    //     console.log("🐶 New filtered page dog count:", newDogDetails.length);
+
+    //     // Append new results
+    //     setSearchResults((prev) => [...prev, ...searchResultsNewBatch.resultIds]);
+    //     setFilteredDogs((prev) => [...prev, ...newDogDetails]);
+    //     setCurrentPage((prev) => prev + 1);
+    //     } catch (error) {
+    //         console.error("❌ Error fetching more dogs:", error);
+    //     } finally {
+    //         setLoadingMore
+    //     }
+    // };
+
     const handleNextPage = async () => {
-        const maxPages = Math.ceil(searchResults.length / dogsPerPage);
+        if (loadingMore) return;
+        if (searchResults.length === 0) return;
 
-        // If we reach the last page, check if more dogs exist
-        if (currentPage >= maxPages) {
-            setLoadingMore(true);
-            console.log("Fetching more dogs...");
-            try {
-                const fromIndex = searchResults.length; // Get next batch after current results
-                const searchResultsNewBatch = await searchDogs({ size: 100, sort: "breed:asc" }, fromIndex);
-                const newDogDetails = await getDogsById(searchResultsNewBatch.resultIds);
+        setLoadingMore(true);
 
-                // Append new dogs to the existing list
-                setSearchResults((prev) => [...prev, ...newDogDetails]);
-                setFilteredDogs((prev) => [...prev, ...newDogDetails]);
+        try {
+            if (!isFiltered) {
+                console.log("Initial searchResults", searchResults);
+                const maxPages = Math.ceil(searchResults.length / dogsPerPage);
 
-                setCurrentPage((prev) => prev + 1); // Move to the next page
-            } catch (error) {
-                console.error("❌ Error fetching more dogs:", error);
-            } finally {
+                // If we reach the last page, check if more dogs exist
+                if (currentPage >= maxPages) {
+                    setLoadingMore(true);
+                    console.log("Fetching more dogs...");
+                    try {
+                        const fromIndex = searchResults.length; // Get next batch after current results
+                        const searchResultsNewBatch = await searchDogs({ size: 100, sort: "breed:asc" }, fromIndex);
+                        const newDogDetails = await getDogsById(searchResultsNewBatch.resultIds);
+
+                        // Append new dogs to the existing list
+                        setSearchResults((prev) => [...prev, ...searchResultsNewBatch.resultIds]);
+                        setFilteredDogs((prev) => [...prev, ...newDogDetails]);
+
+                        setCurrentPage((prev) => prev + 1); // Move to the next page
+                    } catch (error) {
+                        console.error("❌ Error fetching more dogs:", error);
+                    } finally {
+                        setLoadingMore(false);
+                    }
+                } else {
+                    setCurrentPage((prev) => prev + 1);
+                    setLoadingMore(false);
+                }
+                return;
+            }
+            console.log("Reached here", isFiltered);
+            // 📌 Paginate filtered results using the same method as unfiltered
+            const maxPagesFiltered = Math.ceil(totalDogs / dogsPerPage);
+
+            console.log("Current page:", currentPage, "Max pages filtered:", maxPagesFiltered);
+            if (currentPage < maxPagesFiltered) {
+                setLoadingMore(true);
+                console.log("Fetching more filtered dogs...");
+                try {
+                    console.log("Current Page:", currentPage);
+                    console.log("Total Dogs:", totalDogs);
+                    console.log("Filtered Dogs Length:", filteredDogs.length);
+
+                    const fromIndex = currentPage * dogsPerPage; // Get next batch after current results
+
+                    console.log("🔍 Current filtered dogs:", fromIndex);
+                    // Build the query with the correct filters
+                    let query: Record<string, any> = {
+                        size: dogsPerPage,
+                        from: fromIndex, // Move forward in results
+                    };
+
+                    if (selectedBreed) query.breeds = [selectedBreed];
+                    if (selectedAge) {
+                        query.ageMin = selectedAge;
+                        query.ageMax = selectedAge;
+                    }
+
+                    console.log("🔍 Filtered Query for next batch:", query);
+
+                    // Fetch the next batch of filtered dogs
+                    const searchResultsNewBatch = await searchDogs(query);
+                    console.log("🆕 New filtered search results:", searchResultsNewBatch);
+
+                    if (!searchResultsNewBatch.resultIds || searchResultsNewBatch.resultIds.length === 0) {
+                        console.log("🚫 No more filtered results available.");
+                        setLoadingMore(false);
+                        return;
+                    }
+
+                    // Fetch full dog details for the new batch
+                    console.log("🔗 Fetching details for IDs:", searchResultsNewBatch.resultIds);
+                    const newDogDetails = await getDogsById(searchResultsNewBatch.resultIds);
+
+                    console.log("✅ Fetched new batch dog details:", newDogDetails);
+
+                    // Append new results
+                    setSearchResults((prev) => [...prev, ...searchResultsNewBatch.resultIds]);
+                    setFilteredDogs(newDogDetails);
+                    setCurrentPage((prev) => prev + 1);
+                } catch (error) {
+                    console.error("❌ Error fetching more filtered dogs:", error);
+                } finally {
+                    setLoadingMore(false);
+                }
+            } else {
+                setCurrentPage((prev) => prev + 1);
                 setLoadingMore(false);
             }
-        } else {
-            setCurrentPage((prev) => prev + 1);
+        } catch (error) {
+            console.error("❌ Error in pagination:", error);
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -229,8 +485,13 @@ export default function SearchBody() {
                         <DropdownMenuGroup>
                             <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => { setSort("Nearest") }}>Nearest</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setSort("Furthest") }}>Furthest</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSortChange("Nearest")}>
+                                Nearest
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem onClick={() => handleSortChange("Furthest")}>
+                                Furthest
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { handleSortChange("Age"); }}>Age</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { handleSortChange("Breed"); }}>Breed</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { handleSortChange("Name"); }}>Name</DropdownMenuItem>
@@ -262,7 +523,7 @@ export default function SearchBody() {
                             variant="outline"
                             className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
                         >
-                            <span>Age: {sort || "All"}</span>
+                            <span>Age: {selectedAge || "All"}</span>
                             <ChevronDown className="w-5 h-5" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -270,41 +531,62 @@ export default function SearchBody() {
                         align="start"
                         className="w-56 bg-white font-bold shadow-md z-50"
                     >
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>All</DropdownMenuItem>
-                            {ages.map((age) => (
-                                <DropdownMenuItem key={age} onClick={() => { setSelectedAge(age); applyFiltering(); }}>
-                                    {age}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
+                        <ScrollArea className="h-40 w-full overflow-auto">
+                            <DropdownMenuGroup>
+                                <DropdownMenuItem onClick={() => { setSelectedBreed("") }}>All</DropdownMenuItem>
+                                {ages.length > 0 ? (
+                                    ages.map((age) => (
+                                        <DropdownMenuItem key={age} onClick={() => { setSelectedAge(age); }}>
+                                            {age}
+                                        </DropdownMenuItem>
+                                    ))
+
+                                ) : (
+                                    <DropdownMenuItem disabled>Loading ages...</DropdownMenuItem>
+                                )}
+                            </DropdownMenuGroup>
+                        </ScrollArea>
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <DropdownMenu >
+                <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="outline"
-                            className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
+                            className="flex items-center justify-between w-full bg-white text-black border border-black rounded-3xl shadow-lg px-4 mt-4"
                         >
-                            <span>Breed: {sort || "All"}</span>
+                            <span>Breed: {selectedBreed || "All"}</span>
                             <ChevronDown className="w-5 h-5" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                        align="start"
-                        className="w-56 bg-white font-bold shadow-md z-50"
-                    >
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem>All</DropdownMenuItem>
-                            {breeds.map((breed) => (
-                                <DropdownMenuItem key={breed} onClick={() => { setSelectedBreed(breed); applyFiltering(); }}>
-                                    {breed}
+                    <DropdownMenuContent align="start" className="w-56 bg-white font-bold shadow-md z-50">
+                        <ScrollArea className="h-40 w-full overflow-auto">
+                            <DropdownMenuGroup>
+                                <DropdownMenuItem onClick={() => { setSelectedBreed("") }}>
+                                    All
                                 </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuGroup>
+                                {breeds.length > 0 ? (
+                                    breeds.map((breed) => (
+                                        <DropdownMenuItem key={breed} onClick={() => { setSelectedBreed(breed); }}>
+                                            {breed}
+                                        </DropdownMenuItem>
+                                    ))
+                                ) : (
+                                    <DropdownMenuItem disabled>Loading breeds...</DropdownMenuItem>
+                                )}
+                            </DropdownMenuGroup>
+                        </ScrollArea>
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                <Button
+                    className="mt-4 w-full bg-blue-600 text-white"
+                    onClick={() => { setIsFiltered(true); applyFiltering(selectedBreed, selectedAge); }}
+                >
+                    Apply Filters
+                </Button>
+
+
             </div>
 
             <div className="flex-1  w-3/4 ">
