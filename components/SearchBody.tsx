@@ -277,9 +277,6 @@ export default function SearchBody() {
         }
     }
 
-    // Paginate dogs
-    const paginatedDogs = filteredDogs.slice((currentPage - 1) * dogsPerPage, currentPage * dogsPerPage);
-
     // const handleNextPage = async () => {
     //     if (loadingMore) return;
     //     if (searchResults.length === 0) return;
@@ -365,6 +362,32 @@ export default function SearchBody() {
         setLoadingMore(true);
 
         try {
+            // 🟢 CASE 1: PAGINATE SORTED (NEAREST/FURTHEST) DOGS
+            if (sort === "Nearest" || sort === "Furthest") {
+                console.log("📡 Paginating Nearest/Furthest sorted dogs...");
+                
+                const maxPages = Math.ceil(searchResults.length / dogsPerPage);
+    
+                if (currentPage < maxPages) {
+                    const fromIndex = currentPage * dogsPerPage;
+                    const toIndex = fromIndex + dogsPerPage;
+    
+                    console.log(`🔄 Paginating sorted dogs from index ${fromIndex} to ${toIndex}`);
+    
+                    // Slice from the sorted list
+                    const nextBatchIds = searchResults.slice(fromIndex, toIndex);
+                    const nextBatchDogs = await getDogsById(nextBatchIds);
+                    console.log(nextBatchDogs)
+    
+                    setFilteredDogs(prev => [...prev, ...nextBatchDogs]);
+                    setCurrentPage(prev => prev + 1);
+                } else {
+                    console.log("🚫 No more sorted pages available.");
+                }
+                return;
+            }
+
+            // 🟢 CASE 2: INITIAL LOAD PAGINATION
             if (!isFiltered) {
                 console.log("Initial searchResults", searchResults);
                 const maxPages = Math.ceil(searchResults.length / dogsPerPage);
@@ -394,7 +417,9 @@ export default function SearchBody() {
                 }
                 return;
             }
-            console.log("Reached here", isFiltered);
+
+            // 🟢 CASE 3: PAGINATE FILTERED RESULTS (BREED/AGE)
+            console.log("Paginating filtered results...");
             // 📌 Paginate filtered results using the same method as unfiltered
             const maxPagesFiltered = Math.ceil(totalDogs / dogsPerPage);
 
@@ -459,6 +484,9 @@ export default function SearchBody() {
             setLoadingMore(false);
         }
     };
+
+       // Paginate dogs
+       const paginatedDogs = filteredDogs.slice((currentPage - 1) * dogsPerPage, currentPage * dogsPerPage);
 
 
     if (showLoginModal) {
