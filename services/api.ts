@@ -86,7 +86,6 @@ export const getDogsById = async (dogIds: string[]): Promise<Dog[]> => {
             try {
                 if(!Array.isArray(batch) || batch.length === 0) {
                     console.error("❌ Invalid batch of dog IDs:", batch);
-                    return [];
                 }
                 const response = await apiClient.post("/dogs", batch);
                 return response.data;
@@ -160,7 +159,7 @@ export const sortDogsByZip = async (dogIds: string[], zipCode: string): Promise<
             return distanceA - distanceB; // Always sort ascending (nearest first)
         });
 
-        return sortedDogs.map((dog: Dog) => dog.id);
+        return sortedDogs.map((dog: Dog) => String(dog.id));
     } catch (error) {
         console.error("❌ Error sorting dogs by zip:", error);
         return dogIds;
