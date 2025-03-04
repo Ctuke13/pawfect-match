@@ -80,8 +80,23 @@ export const AuthProvider : React.FC<{ children: ReactNode }> = ({ children }) =
 
     const updateFavorites = async (favorites: string[]) => {
         if(user) {
-            const updatedUser = { ...user, favorites};
+            // Create updated user object
+            const updatedUser = { ...user, favorites };
+            
+            // Update state immediately (optimistic update)
             setUser(updatedUser);
+            
+            // Persist to localStorage
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+            
+            // If you have an API endpoint to update favorites, you could call it here
+            try {
+                // Example API call (uncomment if you have such an endpoint)
+                // await apiClient.post('/user/favorites', { favorites });
+            } catch (error) {
+                console.error("Failed to update favorites on server:", error);
+                // You could revert the optimistic update here if needed
+            }
         }
     }
 

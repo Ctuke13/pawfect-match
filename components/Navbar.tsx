@@ -41,7 +41,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="flex flex-wrap items-center justify-between py-4 px-8 bg-[#D9D9D9] shadow-md w-screen mt-5">
+    <nav className="flex flex-wrap items-center justify-between py-4 px-8 bg-[#D9D9D9] shadow-md w-screen ">
       <div className="flex lg-hidden min-[900px]:hidden items-center justify-between gap-4 ">
         {/* Hamburger */}
         <DropdownMenu>

@@ -91,7 +91,7 @@ export default function SearchBody() {
         };
 
         fetchBreedsAndAges();
-    }, [user]);
+    }, [user?.email]);
 
     // Fetch default dogs on login
     useEffect(() => {
@@ -125,7 +125,7 @@ export default function SearchBody() {
         }
 
         fetchDogs();
-    }, [user])
+    }, [user?.email])
 
     // Handle progress updates from the incremental loading process
     const handleSortingProgress = (
@@ -715,12 +715,10 @@ export default function SearchBody() {
                     // Fetch dog details
                     const nextPageDogs = await getDogsById(nextPageResults.resultIds);
 
-                    // CRITICAL CHANGE: Append to filteredDogs to build a complete collection
+
                     if (currentPage === 1) {
-                        // We're on page 1 going to page 2 - discard the page 1 dogs
                         setFilteredDogs(nextPageDogs);
                     } else {
-                        // For subsequent pages, continue to append as you currently do
                         setFilteredDogs(prev => [...prev, ...nextPageDogs]);
                     }
 
@@ -751,7 +749,7 @@ export default function SearchBody() {
 
         return (
             <div className="flex w-full">
-                <div className="w-1/4 lg:w-[300px] bg-[#BEBEBE] h-screen left-0 top-0 p-4">
+                <div className="w-1/4 lg:w-[300px] bg-[#BEBEBE] h-auto left-0 top-0 p-4">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
