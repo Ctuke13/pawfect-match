@@ -27,8 +27,12 @@ const DogDetailsModal: React.FC<DogDetailsModalProps> = ({
     const fetchGeoLocation = async () => {
       try {
         setLoading(true);
-        const geoData = await getGeoLocation(dog.zip_code);
-        setGeoLocation(geoData);
+        if (dog.zip_code) {
+          const geoData = await getGeoLocation(dog.zip_code);
+          setGeoLocation(geoData);
+        } else {
+          console.error('Zip code is missing');
+        }
       } catch (error) {
         console.error("Error fetching geolocation:", error);
       } finally {

@@ -32,13 +32,13 @@ const DogCard: React.FC<DogCardProps> = ({ dog }) => {
   useEffect(() => {
     const fetchLocation = async () => {
       try {
-        const locationMap = await getLocationByZip([dog.zip_code]);
-        setLocation(locationMap[dog.zip_code] || null)
+        const locationMap = await getLocationByZip([dog.zip_code ?? '']);
+        setLocation(locationMap[dog.zip_code ?? ''] || null)
       } catch (error) {
         console.error("Error fetching location:", error)
       }
     }
-
+  
     fetchLocation();
   }, [dog.zip_code])
 

@@ -136,7 +136,7 @@ export const sortDogsByZip = async (dogIds: string[], zipCode: string): Promise<
             return [];
         }
 
-        const zipCodes = [...new Set(dogsData.map((dog: Dog) => dog.zip_code))];
+        const zipCodes = [...new Set(dogsData.map((dog: Dog) => dog.zip_code))].filter((zipCode) => zipCode !== undefined);
         const zipToLocationMap = await getLocationByZip(zipCodes);
         const userLocationMap = await getLocationByZip([zipCode]);
 
@@ -148,8 +148,8 @@ export const sortDogsByZip = async (dogIds: string[], zipCode: string): Promise<
         const userLocation = userLocationMap[zipCode];
 
         const sortedDogs = dogsData.sort((a: Dog, b: Dog) => {
-            const locationA = zipToLocationMap[a.zip_code];
-            const locationB = zipToLocationMap[b.zip_code];
+            const locationA = zipToLocationMap[a.zip_code ?? ''];
+            const locationB = zipToLocationMap[b.zip_code ?? ''];
 
             if (!locationA || !locationB) return 0;
 

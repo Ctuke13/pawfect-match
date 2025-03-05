@@ -5,7 +5,7 @@ export interface Dog {
   age: number | string;
   breed: string;
   img: string;
-  zip_code: string;
+  zip_code?: string;
   city?: string;
   state?: string
 }
