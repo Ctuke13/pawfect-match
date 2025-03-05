@@ -1,39 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Pawfect Match App
 
-## Getting Started
+Overview
 
-First, run the development server:
+Pawfect Match is a web application designed to help users find their perfect canine companion. The app allows users to search for dogs based on breed, location, and other criteria, and provides a platform for users to learn more about each dog and potentially adopt them.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Technology Stack
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Frontend: Built using React, TypeScript, and Tailwind CSS
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Project Structure
 
-## Learn More
+The project is organized into several directories and files:
 
-To learn more about Next.js, take a look at the following resources:
+components: Contains reusable React components used throughout the app
+context: Contains context providers and hooks for managing global state
+pages: Contains page-level components that render specific routes
+public: Contains static assets such as images and fonts
+styles: Contains global CSS styles and Tailwind CSS configuration
+types: Contains type definitions for TypeScript
+utils: Contains utility functions used throughout the app
+Key Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Search: Users can search for dogs based on breed, location, and other criteria
+Dog Profiles: Users can view detailed profiles of each dog, including photos, descriptions, and adoption information
+Favorites: Users can add dogs to their favorites list for easy access later
+Adoption: Users can initiate the adoption process for a dog they're interested in
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Components
 
-## Deploy on Vercel
+About: A page component that displays information about the app and its mission
+Favorites: A page component that displays a user's favorite dogs
+SearchBody: A component that renders the search results and allows users to filter and sort dogs
+DogCard: A component that renders a single dog's profile information
+Context and State Management
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The app uses React Context to manage global state. The AuthContext provides authentication-related state and functions, while the FavoritesContext manages a user's favorite dogs.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+TypeScript and Type Definitions
+
+The app uses TypeScript to provide type safety and autocompletion. Type definitions are provided for React, Tailwind CSS, and other dependencies.
+
+Deployment
+
+The app is likely deployed using a web server such as Next.js or Create React App. The next.config.js file provides configuration for the Next.js server.
+
+Future Development
+
+Implement a backend API to manage dog data and adoption processes
+Add user authentication and authorization to restrict access to certain features
+Improve search functionality and filtering options
+Enhance dog profiles with more information and multimedia content
+Overall, the Pawfect Match app provides a solid foundation for a dog adoption platform. With further development and refinement, it has the potential to become a comprehensive and user-friendly tool for finding the perfect canine companion.
 
 TECH STACK
 
