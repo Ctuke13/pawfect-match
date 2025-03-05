@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu, X, Filter } from "lucide-react";
 import { LoadingSpinner } from "./ui/loadingspinner";
 import { error } from "console";
 import { all } from "axios";
@@ -28,6 +28,7 @@ import { all } from "axios";
 export default function SearchBody() {
     const { user } = useAuth();
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [filterSidebarOpen, setFilterSidebarOpen] = useState(false);
 
     const [breeds, setBreeds] = useState<string[]>([]);
     const [ages, setAges] = useState<string[]>([]);
@@ -40,7 +41,6 @@ export default function SearchBody() {
     const [totalDogs, setTotalDogs] = useState(0);
 
     const [loadingMore, setLoadingMore] = useState(false);
-
 
     const [sort, setSort] = useState<string>("");
     const [sortOrder, setSortOrder] = useState<string>("asc");
@@ -482,6 +482,11 @@ export default function SearchBody() {
             setIsFiltered(true);
 
             setCurrentPage(1);
+            
+            // Auto-close sidebar after applying filters on mobile
+            if (window.innerWidth < 768) {
+                setFilterSidebarOpen(false);
+            }
         } catch (error) {
             console.error("❌ Error applying filters:", error);
         } finally {
@@ -748,151 +753,172 @@ export default function SearchBody() {
         }
 
         return (
-            <div className="flex w-full">
-                <div className="w-1/4 lg:w-[300px] bg-[#BEBEBE] h-auto left-0 top-0 p-4">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
+            <div className="flex flex-col md:flex-row w-full relative">
+                {/* Mobile filter toggle button */}
+                <button 
+                    className="fixed bottom-4 right-4 md:hidden z-50 bg-blue-600 text-white p-3 rounded-full shadow-lg"
+                    onClick={() => setFilterSidebarOpen(!filterSidebarOpen)}
+                >
+                    {filterSidebarOpen ? <X size={24} /> : <Filter size={24} />}
+                </button>
+
+                {/* Filter sidebar - mobile: full screen overlay, desktop: fixed width */}
+                <div 
+                    className={`${filterSidebarOpen ? 'fixed inset-0 z-40 flex md:relative md:inset-auto' : 'hidden md:block'} 
+                    w-full md:w-1/4 md:max-w-[300px] bg-[#BEBEBE] md:min-h-screen transition-all duration-300`}
+                >
+                    <div className="w-full md:sticky md:top-0 p-4 overflow-y-auto max-h-screen">
+                        {/* Close button for mobile only */}
+                        <div className="flex justify-between items-center mb-4 md:hidden">
+                            <h2 className="text-xl font-bold">Filters</h2>
+                            <button onClick={() => setFilterSidebarOpen(false)}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center justify-between w-full h-10 bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
+                                >
+                                    <span>Sort By: {sort || "None"}</span>
+                                    <ChevronDown className="w-5 h-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="start"
+                                className="w-full bg-white font-bold shadow-md z-50"
                             >
-                                <span>Sort By: {sort || "None"}</span>
-                                <ChevronDown className="w-5 h-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="start"
-                            className="w-56 bg-white font-bold shadow-md z-50"
-                        >
-                            <DropdownMenuGroup>
-                                <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleSortChange("Nearest")}>
-                                    Nearest
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem onClick={() => handleSortChange("Furthest")}>
-                                    Furthest
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { handleSortChange("Age"); }}>Age</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { handleSortChange("Breed"); }}>Breed</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { handleSortChange("Name"); }}>Name</DropdownMenuItem>
-                            </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {sort === "Age" || sort === "Breed" || sort === "Name" ? (
-                        <RadioGroup
-                            value={sortOrder}
-                            onValueChange={(value) => setSortOrder(value)}
-                            className="flex flex-col mx-4 mt-4"
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="asc" id="ascending" />
-                                <Label htmlFor="ascending" >Ascending</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="desc" id="descending" />
-                                <Label htmlFor="descending">Descending</Label>
-                            </div>
-                        </RadioGroup>
-                    ) : null}
-
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="flex items-center justify-between w-8 h-5 lg:w-[210px] lg:h-[40px] bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
-                            >
-                                <span>Age: {selectedAge || "All"}</span>
-                                <ChevronDown className="w-5 h-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="start"
-                            className="w-56 bg-white font-bold shadow-md z-50"
-                        >
-                            <ScrollArea className="h-40 w-full overflow-auto">
                                 <DropdownMenuGroup>
-
-                                    <DropdownMenuItem onClick={() => { setSelectedAge("All") }}>All</DropdownMenuItem>
-                                    {ages.length > 0 ? (
-                                        ages.map((age) => (
-                                            <DropdownMenuItem key={age} onClick={() => { setSelectedAge(age); }}>
-                                                {age}
-                                            </DropdownMenuItem>
-                                        ))
-
-                                    ) : (
-                                        <DropdownMenuItem disabled>Loading ages...</DropdownMenuItem>
-                                    )}
-                                </DropdownMenuGroup>
-                            </ScrollArea>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="flex items-center justify-between w-full bg-white text-black border border-black rounded-3xl shadow-lg px-4 mt-4"
-                            >
-                                <span>Breed: {selectedBreed || "All"}</span>
-                                <ChevronDown className="w-5 h-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56 bg-white font-bold shadow-md z-50">
-                            <ScrollArea className="h-40 w-full overflow-auto">
-                                <DropdownMenuGroup>
-                                    <DropdownMenuItem onClick={() => { setSelectedBreed("") }}>
-                                        All
+                                    <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleSortChange("Nearest")}>
+                                        Nearest
                                     </DropdownMenuItem>
-                                    {breeds.length > 0 ? (
-                                        breeds.map((breed) => (
-                                            <DropdownMenuItem key={breed} onClick={() => { setSelectedBreed(breed); }}>
-                                                {breed}
-                                            </DropdownMenuItem>
-                                        ))
-                                    ) : (
-                                        <DropdownMenuItem disabled>Loading breeds...</DropdownMenuItem>
-                                    )}
+
+                                    <DropdownMenuItem onClick={() => handleSortChange("Furthest")}>
+                                        Furthest
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { handleSortChange("Age"); }}>Age</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { handleSortChange("Breed"); }}>Breed</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { handleSortChange("Name"); }}>Name</DropdownMenuItem>
                                 </DropdownMenuGroup>
-                            </ScrollArea>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
 
-                    <Button
-                        className="mt-4 w-full bg-blue-600 text-white"
-                        onClick={() => { setIsFiltered(true); applyFiltering(selectedBreed, selectedAge); }}
-                    >
-                        Apply Filters
-                    </Button>
+                        {sort === "Age" || sort === "Breed" || sort === "Name" ? (
+                            <RadioGroup
+                                value={sortOrder}
+                                onValueChange={(value) => setSortOrder(value)}
+                                className="flex flex-col mx-4 mt-4"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="asc" id="ascending" />
+                                    <Label htmlFor="ascending" >Ascending</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="desc" id="descending" />
+                                    <Label htmlFor="descending">Descending</Label>
+                                </div>
+                            </RadioGroup>
+                        ) : null}
 
 
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center justify-between w-full h-10 bg-white text-black hover:text-gray-700 border border-black rounded-3xl shadow-lg px-4 mt-4"
+                                >
+                                    <span>Age: {selectedAge || "All"}</span>
+                                    <ChevronDown className="w-5 h-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="start"
+                                className="w-56 bg-white font-bold shadow-md z-50"
+                            >
+                                <ScrollArea className="h-40 w-full overflow-auto">
+                                    <DropdownMenuGroup>
+                                        <DropdownMenuItem onClick={() => { setSelectedAge("All") }}>All</DropdownMenuItem>
+                                        {ages.length > 0 ? (
+                                            ages.map((age) => (
+                                                <DropdownMenuItem key={age} onClick={() => { setSelectedAge(age); }}>
+                                                    {age}
+                                                </DropdownMenuItem>
+                                            ))
+                                        ) : (
+                                            <DropdownMenuItem disabled>Loading ages...</DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuGroup>
+                                </ScrollArea>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center justify-between w-full bg-white text-black border border-black rounded-3xl shadow-lg px-4 mt-4"
+                                >
+                                    <span>Breed: {selectedBreed || "All"}</span>
+                                    <ChevronDown className="w-5 h-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56 bg-white font-bold shadow-md z-50">
+                                <ScrollArea className="h-40 w-full overflow-auto">
+                                    <DropdownMenuGroup>
+                                        <DropdownMenuItem onClick={() => { setSelectedBreed("") }}>
+                                            All
+                                        </DropdownMenuItem>
+                                        {breeds.length > 0 ? (
+                                            breeds.map((breed) => (
+                                                <DropdownMenuItem key={breed} onClick={() => { setSelectedBreed(breed); }}>
+                                                    {breed}
+                                                </DropdownMenuItem>
+                                            ))
+                                        ) : (
+                                            <DropdownMenuItem disabled>Loading breeds...</DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuGroup>
+                                </ScrollArea>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <Button
+                            className="mt-4 w-full bg-blue-600 text-white"
+                            onClick={() => { setIsFiltered(true); applyFiltering(selectedBreed, selectedAge); }}
+                        >
+                            Apply Filters
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="flex-1  w-3/4 ">
-                    <div className='flex items-center w-full max-w-md bg-white rounded-full overflow-hidden shadow-md mx-auto my-8 border-1 border-yellow-500'>
+                <div className="flex-1 w-full md:w-3/4 p-4">
+                    <div className="flex flex-col sm:flex-row items-center w-full max-w-md bg-white rounded-full overflow-hidden shadow-md mx-auto my-4 sm:my-8 border-1 border-yellow-500">
                         <input
                             type="text"
-                            placeholder='Enter Breed'
+                            placeholder="Enter Breed"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className='w-1/2 px-4 py-2 outline-none rounded-full'
+                            className="w-full sm:w-1/2 px-4 py-2 outline-none rounded-full"
                         />
 
-                        <div className='h-6 w-px bg-gray-300' />
+                        <div className="hidden sm:block h-6 w-px bg-gray-300" />
 
-                        <div className="relative w-1/2">
+                        <div className="relative w-full sm:w-1/2 mt-2 sm:mt-0">
                             <input
-                                type='text'
-                                placeholder='Enter Zip Code'
+                                type="text"
+                                placeholder="Enter Zip Code"
                                 value={searchZipCode}
                                 onChange={(e) => setSearchZipcode(e.target.value)}
-                                className='w-full px-4 py-2 outline-none rounded-r-full'
+                                className="w-full px-4 py-2 outline-none rounded-full"
                             />
-                            <button className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-500' onClick={handleSearch}>
+                            <button 
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-500" 
+                                onClick={handleSearch}
+                            >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 50 50"
@@ -905,14 +931,16 @@ export default function SearchBody() {
                         </div>
                     </div>
 
-                    <div className="text-2xl left-0 top-0 my-6">Add Dogs To Your Paw list by clicking the <span className="text-red-500">❤︎</span> at the top right of the image  </div>
+                    <div className="text-base sm:text-lg md:text-xl lg:text-2xl px-4 md:px-0 text-center md:text-left my-4 md:my-6">
+                        Add Dogs To Your Paw list by clicking the <span className="text-red-500">❤︎</span> at the top right of the image
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-24">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 px-4 md:ml-0 lg:ml-4">
                         {paginatedDogs.length > 0 ? (
                             paginatedDogs.map((dog) =>
                                 <DogCard key={dog.id} dog={dog} />)
                         ) : (
-                            <p className="text-4xl text-center text-gray-500 col-span-3">No dogs found.</p>
+                            <p className="text-2xl md:text-4xl text-center text-gray-500 col-span-1 sm:col-span-2 lg:col-span-3">No dogs found.</p>
                         )}
                     </div>
 

@@ -437,7 +437,7 @@ export default function FavoritesPage() {
             <CustomModal />
 
             {/* Keep the Dialog component as a backup, but it may not be visible */}
-            <Dialog open={matchModalOpen} onOpenChange={handleCloseModal}>
+            {/* <Dialog open={matchModalOpen} onOpenChange={handleCloseModal}>
                 <DialogContent
                     className="sm:max-w-md z-50"
                     onOpenAutoFocus={(e) => e.preventDefault()}
@@ -514,7 +514,7 @@ export default function FavoritesPage() {
                         </div>
                     )}
                 </DialogContent>
-            </Dialog>
+            </Dialog> */}
         </div>
     );
 }

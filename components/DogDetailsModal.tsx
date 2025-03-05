@@ -98,6 +98,9 @@ const DogDetailsModal: React.FC<DogDetailsModalProps> = ({
               <p className="mb-2">
                 <span className="font-lilita text-lg">Breed:</span> {dog.breed}
               </p>
+              
+            </div>
+            <div>
               {location && (
                 <p className="mb-2">
                   <span className="font-lilita text-lg">Location:</span>{" "}
@@ -107,17 +110,6 @@ const DogDetailsModal: React.FC<DogDetailsModalProps> = ({
               <p className="mb-2">
                 <span className="font-lilita text-lg">ZIP Code:</span>{" "}
                 {dog.zip_code}
-              </p>
-            </div>
-            <div>
-              <p className="mb-2">
-                <span className="font-lilita text-lg">Size:</span> Medium
-              </p>
-              <p className="mb-2">
-                <span className="font-lilita text-lg">Gender:</span> Unknown
-              </p>
-              <p className="mb-2">
-                <span className="font-lilita text-lg">ID:</span> {dog.id}
               </p>
             </div>
           </div>
